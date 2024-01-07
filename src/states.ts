@@ -49,12 +49,18 @@ statesRouter.get('/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
     stateId = stateId + '.tfstate';
   }
 
-  const state = await c.env.STATE_BUCKET.get(`states/${stateId}`);
+  let state: R2ObjectBody | null;
+  try {
+    state = await c.env.STATE_BUCKET.get(`states/${stateId}`);
+  } catch (err) {
+    throw new Error(`Could not find state 'states/${stateId}' in bucket`, { cause: err });
+  }
+
   if (state === null) {
     return c.notFound();
   }
 
-  return stream(c, async (stream) => await stream.pipe(state.body));
+  return stream(c, async (stream) => await stream.pipe(state!.body));
 });
 
 statesRouter.post('/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
@@ -70,8 +76,8 @@ statesRouter.post('/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
     body = c.req.raw.body;
   }
 
-  if (c.req.raw.body === null) {
-    return new Response('body is null', { status: 500 });
+  if (body === null) {
+    throw new Error('Could not read request body');
   }
 
   await c.env.STATE_BUCKET.put(`states/${stateId}`, body);
@@ -84,7 +90,11 @@ statesRouter.delete('/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
     stateId = stateId + '.tfstate';
   }
 
-  await c.env.STATE_BUCKET.delete(`states/${stateId}`);
+  try {
+    await c.env.STATE_BUCKET.delete(`states/${stateId}`);
+  } catch (err) {
+    throw new Error(`Could not delete state 'states/${stateId}' in bucket`, { cause: err });
+  }
   return new Response(null, { status: 200 });
 });
 
@@ -94,14 +104,26 @@ statesRouter.on('LOCK', '/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
     stateId = stateId + '.tfstate';
   }
 
-  const lock = await c.env.STATE_BUCKET.get(`locks/${stateId}`);
+  let lock: R2ObjectBody | null;
+  try {
+    lock = await c.env.STATE_BUCKET.get(`locks/${stateId}`);
+  } catch (err) {
+    throw new Error(`Could not find lock 'locks/${stateId}' in bucket`, { cause: err });
+  }
+
   if (lock !== null) {
     c.status(423);
     return c.text(await lock.text());
   }
 
   const lockBody = await c.req.arrayBuffer();
-  await c.env.STATE_BUCKET.put(`locks/${stateId}`, lockBody);
+
+  try {
+    await c.env.STATE_BUCKET.put(`locks/${stateId}`, lockBody);
+  } catch (err) {
+    throw new Error(`Could not write lock 'locks/${stateId}' in bucket`, { cause: err });
+  }
+
   return c.body(lockBody);
 });
 
@@ -116,15 +138,25 @@ statesRouter.on('UNLOCK', '/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
   // In a force-unlock scenario, Terraform does not send the state-id
   // See https://github.com/hashicorp/terraform/issues/28421
   // It is up to the implementation to figure what to do...
-  // In our case we unlock
+  // In our case we unlock anyway
   if (body === '') {
-    await c.env.STATE_BUCKET.delete(`locks/${stateId}`);
-    return new Response(null, { status: 200 });
+    try {
+      await c.env.STATE_BUCKET.delete(`locks/${stateId}`);
+    } catch (err) {
+      throw new Error(`Could not delete lock 'locks/${stateId}' in bucket`, { cause: err });
+    }
+    return new Response('', { status: 200 });
   }
 
   const lockInfo = JSON.parse(body) as LockInfo;
 
-  const existingLock = await c.env.STATE_BUCKET.get(`locks/${stateId}`);
+  let existingLock: R2ObjectBody | null;
+  try {
+    existingLock = await c.env.STATE_BUCKET.get(`locks/${stateId}`);
+  } catch (err) {
+    throw new Error(`Could not find lock 'locks/${stateId}' in bucket`, { cause: err });
+  }
+
   if (existingLock === null) {
     return new Response('attempting to unlock but resource not locked', { status: 409 });
   }
@@ -136,7 +168,12 @@ statesRouter.on('UNLOCK', '/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
     return c.json(existingLockInfo);
   }
 
-  await c.env.STATE_BUCKET.delete(`locks/${stateId}`);
+  try {
+    await c.env.STATE_BUCKET.delete(`locks/${stateId}`);
+  } catch (err) {
+    throw new Error(`Could not delete lock 'locks/${stateId}' in bucket`, { cause: err });
+  }
+
   return c.json(existingLockInfo);
 });
 
