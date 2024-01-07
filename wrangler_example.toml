@@ -1,0 +1,9 @@
+name = "tf-state-worker"
+main = "src/index.ts"
+compatibility_date = "2023-12-18"
+
+# Bind an R2 Bucket. Use R2 to store arbitrarily large blobs of data, such as files.
+# Docs: https://developers.cloudflare.com/r2/api/workers/workers-api-usage/
+[[r2_buckets]]
+binding = "STATE_BUCKET"
+bucket_name = "tf-states"
