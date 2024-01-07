@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
+import { Bindings } from './bindings';
 
 export type State = {
   version: string | number;
@@ -24,11 +25,7 @@ export type InfoItem = {
   uploaded: string;
 };
 
-export const statesRouter = new Hono<{
-  Bindings: {
-    STATE_BUCKET: R2Bucket;
-  };
-}>();
+export const statesRouter = new Hono<{ Bindings: Bindings }>();
 
 statesRouter.get('/', async (c) => {
   // TODO: handle pagination
