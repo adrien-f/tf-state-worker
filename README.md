@@ -5,7 +5,9 @@ A Cloudflare worker to store and lock Terraform states in R2.
 ## Why does this exist?
 
 In the case of a new project in a serverless context, without any previous infrastructure (and so, without any Cloud object storage),
-it might be interesting to be able to store Terraform states. The worker does just that but uses Cloudflare object storage solution, R2.
+it might be interesting to be able to store Terraform states in a remote backend to easily collaborate.
+
+The worker does just that but uses Cloudflare object storage solution, R2.
 
 ### But what about the S3 compatibility?
 
