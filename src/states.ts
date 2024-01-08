@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
-import { Bindings } from './bindings';
+import { Bindings, Variables } from './bindings';
+import { BasicAuth, FailAuth, NoopAuth } from './auth';
 
 export type State = {
   version: string | number;
@@ -25,9 +26,32 @@ export type InfoItem = {
   uploaded: string;
 };
 
-export const statesRouter = new Hono<{ Bindings: Bindings }>();
+export const statesRouter = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+statesRouter.use('*', async (c, next) => {
+  switch (c.env.AUTH_PLUGIN) {
+    case 'basic':
+      const { AUTH_BASIC_USERNAME, AUTH_BASIC_PASSWORD } = c.env;
+      if (!AUTH_BASIC_USERNAME || !AUTH_BASIC_PASSWORD) {
+        throw new Error('Missing AUTH_BASIC_USERNAME or AUTH_BASIC_PASSWORD');
+      }
+      c.set('auth', new (BasicAuth(AUTH_BASIC_USERNAME, AUTH_BASIC_PASSWORD))());
+      break;
+    case 'noop':
+      c.set('auth', new NoopAuth());
+      break;
+    case 'fail':
+    default:
+      c.set('auth', new FailAuth());
+      break;
+  }
+
+  await next();
+});
 
 statesRouter.get('/', async (c) => {
+  await c.get('auth').authorize(c.req, 'list', '*');
+
   // TODO: handle pagination
   // https://developers.cloudflare.com/r2/api/workers/workers-api-reference/#r2listoptions
   const states = (await c.env.STATE_BUCKET.list({ prefix: 'states' })).objects.map(
@@ -49,6 +73,8 @@ statesRouter.get('/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
     stateId = stateId + '.tfstate';
   }
 
+  await c.get('auth').authorize(c.req, 'read', stateId);
+
   let state: R2ObjectBody | null;
   try {
     state = await c.env.STATE_BUCKET.get(`states/${stateId}`);
@@ -68,6 +94,8 @@ statesRouter.post('/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
   if (!stateId.endsWith('.tfstate')) {
     stateId = stateId + '.tfstate';
   }
+
+  await c.get('auth').authorize(c.req, 'write', stateId);
 
   let body;
   if (c.req.header('content-length') == null) {
@@ -90,6 +118,8 @@ statesRouter.delete('/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
     stateId = stateId + '.tfstate';
   }
 
+  await c.get('auth').authorize(c.req, 'delete', stateId);
+
   try {
     await c.env.STATE_BUCKET.delete(`states/${stateId}`);
   } catch (err) {
@@ -103,6 +133,8 @@ statesRouter.on('LOCK', '/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
   if (!stateId.endsWith('.tfstate')) {
     stateId = stateId + '.tfstate';
   }
+
+  await c.get('auth').authorize(c.req, 'write', stateId);
 
   let lock: R2ObjectBody | null;
   try {
@@ -132,6 +164,8 @@ statesRouter.on('UNLOCK', '/:stateId{[a-zA-Z0-9][\\w\\-\\.]*}', async (c) => {
   if (!stateId.endsWith('.tfstate')) {
     stateId = stateId + '.tfstate';
   }
+
+  await c.get('auth').authorize(c.req, 'write', stateId);
 
   const body = await c.req.text();
 
