@@ -53,7 +53,10 @@ mv wrangler_example.toml wrangler.toml
 npx wrangler deploy
 ```
 
-Note that by default, all requests will fail due to the default authorization method.
+[Wrangler](https://developers.cloudflare.com/workers/wrangler/) is Cloudfare's tool to test and deploy workers.
+
+> [!IMPORTANT]
+> Note that by default, all requests will fail due to the default authorization method.
 
 You can also execute `npx wrangler dev` to run a local worker and try it before deploying.
 
@@ -116,13 +119,30 @@ Use the value `fail` to deny all operations. This is the default.
 
 ### Noop
 
-Use the value `noop` to allow all operations. This is not recommended for security purpose unless you've secured the worker with something else.
+Use the value `noop` to allow all operations.
+
+> [!WARNING]
+> This is not recommended for security purpose unless you've secured the worker with something else.
+> States can contain sensitive data and must be secured!
 
 ### Basic
 
 Use the value `basic` for a simple username/password check. Only one set of credentials is supported for the moment.
 
 To configure this method, also set the secrets `AUTH_BASIC_USERNAME` and `AUTH_BASIC_PASSWORD` variables.
+
+## Migrate states
+
+If you have existing states, you can either upload them on R2 interface to the `states/` directory or
+use `curl` or any HTTP clients to push them through the API:
+
+```bash
+# Before changing the backend configuration
+terraform state pull > backup.tfstate
+curl -v -X POST http://foo:bar@127.0.0.1:8787/states/foo < backup.tfstate
+```
+
+In the case of a backend change, Terraform usually will prompt to run `terraform init -migrate-state` but your mileage may vary.
 
 ## TODO
 
