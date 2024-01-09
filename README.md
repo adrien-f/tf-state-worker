@@ -71,6 +71,18 @@ terraform {
 }
 ```
 
+or if you're using CDKTF:
+
+```ts
+import { HttpBackend } from 'cdktf';
+
+const cfBackend = new HttpBackend(scope, {
+  address: 'http://127.0.0.1:8787/states/foo',
+  lockAddress: 'http://127.0.0.1:8787/states/foo',
+  unlockAddress: 'http://127.0.0.1:8787/states/foo',
+});
+```
+
 Where `foo` is the name of your state. If you wish to use it for remote states, here's an example:
 
 ```hcl
@@ -80,6 +92,16 @@ data "terraform_remote_state" "foo" {
     address = "http://127.0.0.1:8787/states/foo"
   }
 }
+```
+
+and again if you're using CDKTF:
+
+```ts
+import { DataTerraformRemoteStateHttp } from 'cdktf';
+
+const cfRemoteState = new DataTerraformRemoteStateHttp(scope, 'foo', {
+  address: 'http://127.0.0.1:8787/states/foo',
+});
 ```
 
 ## Authentication
