@@ -7,11 +7,11 @@ A Cloudflare worker to store and lock Terraform states in R2.
 In the case of a new project in a serverless context, without any previous infrastructure (and so, without any Cloud object storage),
 it might be interesting to be able to store Terraform states in a remote backend to easily collaborate.
 
-The worker does just that but uses Cloudflare object storage solution, R2.
+The worker does just that but uses Cloudflare object storage solution, [R2](https://developers.cloudflare.com/r2/).
 
 ### But what about the S3 compatibility?
 
-Indeed, it is possible to use the S3 backend to store states in Cloudflare R2 like this:
+Indeed you're correct, it is possible to use the S3 backend to store states in Cloudflare R2 like this:
 
 ```hcl
 terraform {
@@ -32,7 +32,7 @@ terraform {
 }
 ```
 
-But not only is it verbose (and will never be supported officialy by Hashicorp) but it also does not support locking, which is pretty
+But not only is it verbose (and will never be supported officialy by Hashicorp) but it also does not support [locking](https://developer.hashicorp.com/terraform/language/state/locking), which is pretty
 useful when working in a team.
 
 ### Why the HTTP backend?
