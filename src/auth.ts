@@ -42,12 +42,6 @@ export const BasicAuth = (username: string, password: string) => {
     }
 
     const [providedUsername, providedPassword] = utf8Decoder.decode(decodeBase64(credentials)).split(':');
-
-    console.log(username);
-    console.log(password);
-    console.log(providedUsername);
-    console.log(providedPassword);
-
     const usernameEqual = await timingSafeEqual(username, providedUsername);
     const passwordEqual = await timingSafeEqual(password, providedPassword);
     if (!usernameEqual || !passwordEqual) {
